@@ -18,17 +18,16 @@
     <name>HuertoHogar Backend</name>
     <description>Backend para e-commerce de productos orgánicos</description>
 
-    <properties>
-        <java.version>21</java.version>
-        <transbank.version>1.13.0</transbank.version>
-    </properties>
-
     <repositories>
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
     </repositories>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
 
     <dependencies>
         <!-- SPRING BOOT WEB -->
@@ -102,7 +101,12 @@
             <version>2.3.0</version>
         </dependency>
 
-        <!-- TRANSBANK SDK (temporalmente removida para permitir compilación durante el upgrade) -->
+        <!-- TRANSBANK SDK -->
+        <dependency>
+            <groupId>com.github.TransbankDevelopers</groupId>
+            <artifactId>transbank-sdk-java</artifactId>
+            <version>v4.0.0</version>
+        </dependency>
 
         <!-- DEV TOOLS -->
         <dependency>
