@@ -37,7 +37,7 @@ public class HuertoHogarApplication {
         
         System.out.println("╔══════════════════════════════════════════════════════════════╗");
         System.out.println("║                                                              ║");
-        System.out.println("║             🌱 HUERTOHOGAR BACKEND INICIADO 🌱              ║");
+        System.out.println("║             🌱 HUERTOHOGAR BACKEND INICIADO 🌱                 ║");
         System.out.println("║                                                              ║");
         System.out.println("║  API REST:     http://localhost:8080/api                     ║");
         System.out.println("║  Swagger UI:   http://localhost:8080/api/swagger-ui.html     ║");
@@ -45,7 +45,7 @@ public class HuertoHogarApplication {
         System.out.println("║                                                              ║");
         System.out.println("║  Versión:      1.0.0                                         ║");
         System.out.println("║  Perfil:       development                                   ║");
-        System.out.println("║  Database:     MySQL (huertohogar_db)                        ║");
+        System.out.println("║  Database:     PostgreSQL (neondb)                           ║");
         System.out.println("║                                                              ║");
         System.out.println("╚══════════════════════════════════════════════════════════════╝");
     }

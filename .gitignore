@@ -1,0 +1,114 @@
+# =========================================
+# GITIGNORE - HUERTOHOGAR BACKEND
+# =========================================
+
+# ============= MAVEN =============
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ============= IDE =============
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ============= JAVA =============
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.ctxt
+.mtj.tmp/
+hs_err_pid*
+replay_pid*
+
+# ============= SPRING BOOT =============
+application-*.yml
+application-*.properties
+!application.yml
+!application.properties
+
+# ============= LOGS =============
+logs/
+*.log
+*.log.*
+log/
+
+# ============= DATABASES =============
+*.db
+*.sqlite
+*.sqlite3
+*.h2.db
+
+# ============= SECRETS =============
+.env
+.env.local
+.env.*.local
+secrets/
+*.key
+*.pem
+*.p12
+
+# ============= TEMP FILES =============
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============= BUILD =============
+build/
+dist/
+*.class
+
+# ============= PACKAGE FILES =============
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ============= NODE (si usas frontend) =============
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============= OTROS =============
+.cache/
+.venv/
+venv/
+*.bak
+*.orig
