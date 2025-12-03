@@ -1,8 +1,9 @@
 package com.huertohogar.service;
 
 import cl.transbank.webpay.webpayplus.WebpayPlus;
-import cl.transbank.webpay.webpayplus.model.WebpayPlusTransactionCommitResponse;
-import cl.transbank.webpay.webpayplus.model.WebpayPlusTransactionCreateResponse;
+import cl.transbank.webpay.webpayplus.responses.WebpayPlusTransactionCreateResponse;
+import cl.transbank.webpay.webpayplus.responses.WebpayPlusTransactionCommitResponse;
+
 import com.huertohogar.dto.payment.WebpayCommitResponse;
 import com.huertohogar.dto.payment.WebpayInitRequest;
 import com.huertohogar.dto.payment.WebpayInitResponse;
@@ -48,9 +49,9 @@ public class WebpayService {
         }
 
         try {
-            // Crear instancia con configuración por defecto (ambiente TEST)
             WebpayPlus.Transaction transaction = new WebpayPlus.Transaction();
             
+            // CORREGIDO: Usar la clase importada correctamente
             WebpayPlusTransactionCreateResponse response = transaction.create(
                     request.getBuyOrder(),
                     request.getSessionId(),
@@ -90,9 +91,9 @@ public class WebpayService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transacción no encontrada"));
 
         try {
-            // Crear instancia con configuración por defecto
             WebpayPlus.Transaction transaction = new WebpayPlus.Transaction();
             
+            // CORREGIDO: Usar la clase importada correctamente
             WebpayPlusTransactionCommitResponse response = transaction.commit(token);
 
             transaccion.setAuthorizationCode(response.getAuthorizationCode());
@@ -112,18 +113,14 @@ public class WebpayService {
                 for (PedidoItem item : pedido.getItems()) {
                     productoService.reducirStock(item.getProducto().getId(), item.getCantidad());
                 }
-
-                log.info("Pago autorizado. Pedido: {}", pedido.getNumeroPedido());
             } else {
-                transaccion.setEstado(Transaccion.EstadoTransaccion.RECHAZADA);
+                transaccion.marcarComoRechazada(String.valueOf(response.getResponseCode()), "Rechazado por Webpay");
                 transaccion.getPedido().setEstado(Pedido.EstadoPedido.RECHAZADO);
                 pedidoRepository.save(transaccion.getPedido());
-                log.warn("Pago rechazado. Pedido: {}", transaccion.getPedido().getNumeroPedido());
             }
 
             transaccionRepository.save(transaccion);
             
-            // Crear response DTO
             WebpayCommitResponse commitResponse = new WebpayCommitResponse();
             commitResponse.setBuyOrder(response.getBuyOrder());
             commitResponse.setSessionId(response.getSessionId());
@@ -132,12 +129,12 @@ public class WebpayService {
             commitResponse.setAuthorizationCode(response.getAuthorizationCode());
             commitResponse.setPaymentTypeCode(response.getPaymentTypeCode());
             commitResponse.setResponseCode(String.valueOf(response.getResponseCode()));
-            commitResponse.setInstallmentsNumber(Integer.valueOf(response.getInstallmentsNumber()));
+            commitResponse.setInstallmentsNumber((int) response.getInstallmentsNumber());
             
             return commitResponse;
 
         } catch (Exception e) {
-            log.error("Error al confirmar transacción: {}", e.getMessage(), e);
+            // CORREGIDO: metodo setMensajeError
             transaccion.setEstado(Transaccion.EstadoTransaccion.RECHAZADA);
             transaccion.setMensajeError(e.getMessage());
             transaccionRepository.save(transaccion);
@@ -150,20 +147,11 @@ public class WebpayService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transacción no encontrada"));
     }
 
-    @Transactional
     public void manejarTransaccionFallida(String token, String motivo) {
-        log.warn("Transacción fallida. Token: {}, Motivo: {}", token, motivo);
-        
         Transaccion transaccion = transaccionRepository.findByToken(token)
                 .orElseThrow(() -> new ResourceNotFoundException("Transacción no encontrada"));
-        
         transaccion.marcarComoRechazada("FAILED", motivo);
         transaccionRepository.save(transaccion);
-        
-        if (transaccion.getPedido() != null) {
-            transaccion.getPedido().setEstado(Pedido.EstadoPedido.RECHAZADO);
-            pedidoRepository.save(transaccion.getPedido());
-        }
     }
 
     public boolean esTransaccionExitosa(String token) {

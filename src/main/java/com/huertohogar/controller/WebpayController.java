@@ -6,7 +6,6 @@ import com.huertohogar.dto.payment.WebpayInitResponse;
 import com.huertohogar.entity.Transaccion;
 import com.huertohogar.service.WebpayService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,11 +29,16 @@ import java.util.Map;
  * - Consultar estado
  * - Manejo de errores
  */
+
+/*
+ * PRINCIPIO: Adapter Pattern (Implícito)
+ * Este controlador actúa como adaptador entre tu API REST y el servicio de Transbank.
+ * Recibe peticiones JSON de tu frontend y orquesta la lógica compleja de Webpay.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/v1/payment/webpay")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Webpay", description = "Integración con Webpay Plus de Transbank")
 public class WebpayController {
 
@@ -59,21 +63,21 @@ public class WebpayController {
      *   "url": "https://webpay3gint.transbank.cl/webpayserver/initTransaction"
      * }
      */
+
+    /*
+     * PASO 1: Iniciar.
+     * El frontend envía los datos, nosotros contactamos a Transbank, 
+     * y devolvemos un token + URL. El frontend debe redirigir al usuario a esa URL.
+     */
     @PostMapping("/init")
-    @Operation(
-        summary = "Iniciar transacción Webpay",
-        description = "Crear una nueva transacción de pago con Webpay Plus. Retorna token y URL para redireccionar al usuario."
-    )
+    @Operation(summary = "Iniciar transacción")
     public ResponseEntity<WebpayInitResponse> iniciarTransaccion(
             @Valid @RequestBody WebpayInitRequest request,
             Authentication authentication
     ) {
         log.info("Iniciando transacción Webpay para buyOrder: {}", request.getBuyOrder());
-        
         String userEmail = authentication.getName();
         WebpayInitResponse response = webpayService.iniciarTransaccion(userEmail, request);
-        
-        log.info("Transacción iniciada exitosamente. Token: {}", response.getToken());
         return ResponseEntity.ok(response);
     }
 
@@ -97,21 +101,20 @@ public class WebpayController {
      *   "transactionDate": "2024-12-01T10:30:00"
      * }
      */
+
+    /*
+     * PASO 2: Confirmar (Commit).
+     * Transbank devuelve al usuario a tu frontend con un token en la URL (token_ws).
+     * Tu frontend captura ese token y llama INMEDIATAMENTE a este endpoint.
+     */
     @PostMapping("/commit")
-    @Operation(
-        summary = "Confirmar transacción Webpay",
-        description = "Confirmar el pago después de que el usuario complete el proceso en Webpay. Este endpoint es llamado desde el frontend después de la redirección."
-    )
+    @Operation(summary = "Confirmar transacción")
     public ResponseEntity<WebpayCommitResponse> confirmarTransaccion(
             @RequestParam("token_ws") String token
     ) {
         log.info("Confirmando transacción Webpay. Token: {}", token);
-        
+        // Aquí es donde realmente se cobra el dinero y se descuenta el stock.
         WebpayCommitResponse response = webpayService.confirmarTransaccion(token);
-        
-        log.info("Transacción confirmada. Status: {}, BuyOrder: {}", 
-                response.getStatus(), response.getBuyOrder());
-        
         return ResponseEntity.ok(response);
     }
 

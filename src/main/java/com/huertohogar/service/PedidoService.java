@@ -21,11 +21,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * PEDIDO SERVICE
- * 
- * Gestión completa de pedidos
- */
 @Service
 @RequiredArgsConstructor
 public class PedidoService {
@@ -36,8 +31,10 @@ public class PedidoService {
     private final CarritoService carritoService;
     private final ProductoService productoService;
 
-    /**
-     * Crear pedido desde el carrito
+    /*
+     * PRINCIPIO: Atomicidad (ACID)
+     * @Transactional asegura que todo sucede o nada sucede. 
+     * Si falla el guardado del pedido, no se vacía el carrito.
      */
     @Transactional
     public PedidoDTO crearPedido(String userEmail, PedidoRequest request) {
@@ -51,14 +48,19 @@ public class PedidoService {
             throw new BadRequestException("El carrito está vacío");
         }
 
-        // Verificar stock de todos los productos
+        /*
+         * ADVERTENCIA DE DISEÑO (Race Condition):
+         * Aquí verificamos stock, pero NO lo descontamos hasta que se paga.
+         * Existe un riesgo de que dos usuarios compren la última unidad al mismo tiempo.
+         * Solución ideal: Reservar stock temporalmente o usar bloqueo pesimista en DB.
+         * Solución actual (MVP): Verificar de nuevo al momento del pago.
+         */
         for (CarritoItem item : carrito.getItems()) {
             if (!productoService.verificarStock(item.getProducto().getId(), item.getCantidad())) {
                 throw new BadRequestException("Stock insuficiente para: " + item.getProducto().getNombre());
             }
         }
 
-        // Crear pedido
         Pedido pedido = Pedido.builder()
                 .numeroPedido(generarNumeroPedido())
                 .usuario(usuario)
@@ -72,10 +74,10 @@ public class PedidoService {
                 .metodoPago(Pedido.MetodoPago.WEBPAY)
                 .build();
 
-        // Agregar items del carrito al pedido
+        // Conversión de CarritoItem a PedidoItem
         for (CarritoItem carritoItem : carrito.getItems()) {
             PedidoItem pedidoItem = PedidoItem.builder()
-                    .pedido(pedido)
+                    .pedido(pedido) // Establecemos la relación bidireccional
                     .producto(carritoItem.getProducto())
                     .cantidad(carritoItem.getCantidad())
                     .precioUnitario(carritoItem.getPrecioUnitario())
@@ -85,13 +87,10 @@ public class PedidoService {
             pedido.agregarItem(pedidoItem);
         }
 
-        // Calcular totales
         pedido.calcularTotales();
-
-        // Guardar pedido
         pedido = pedidoRepository.save(pedido);
 
-        // Vaciar carrito
+        // Limpieza: Una vez convertido en pedido, el carrito ya no se necesita.
         carritoService.vaciarCarrito(userEmail);
 
         return convertToDTO(pedido);
@@ -174,6 +173,8 @@ public class PedidoService {
             case ENTREGADO:
                 pedido.setFechaEntrega(ahora);
                 break;
+            default:
+                break;
         }
 
         pedido = pedidoRepository.save(pedido);
@@ -204,18 +205,11 @@ public class PedidoService {
      * Generar número de pedido único
      */
     private String generarNumeroPedido() {
-        String numeroPedido;
-        do {
-            numeroPedido = "ORDER-" + System.currentTimeMillis() + "-" + 
-                          UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        } while (pedidoRepository.existsByNumeroPedido(numeroPedido));
-        
-        return numeroPedido;
+        return "ORDER-" + System.currentTimeMillis() + "-" + 
+               UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
-    /**
-     * Convertir Pedido a PedidoDTO
-     */
+    // Mapeo manual (patrón Mapper). Podrías usar MapStruct para automatizar esto.
     private PedidoDTO convertToDTO(Pedido pedido) {
         List<PedidoItemDTO> itemDTOs = pedido.getItems().stream()
                 .map(item -> PedidoItemDTO.builder()

@@ -1,31 +1,18 @@
 package com.huertohogar.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
+import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * ENTIDAD CARRITO
- * 
- * Carrito de compras del usuario.
- * Cada usuario tiene un único carrito activo.
- */
+/* Principio: Composition. El carrito "posee" sus items. */
 @Entity
 @Table(name = "carritos")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EntityListeners(AuditingEntityListener.class)
 public class Carrito {
 
     @Id
@@ -34,63 +21,28 @@ public class Carrito {
 
     @OneToOne
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
+    @ToString.Exclude // Evita ciclo
     private Usuario usuario;
 
     @OneToMany(mappedBy = "carrito", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @ToString.Exclude // Evita ciclo
     private List<CarritoItem> items = new ArrayList<>();
 
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime fechaCreacion;
-
-    @LastModifiedDate
-    private LocalDateTime fechaActualizacion;
-
-    // =========================================
-    // MÉTODOS DE NEGOCIO
-    // =========================================
-
-    /**
-     * Agrega un item al carrito o incrementa la cantidad si ya existe
-     */
+    // Lógica helper para añadir items
     public void agregarItem(CarritoItem item) {
         item.setCarrito(this);
-        
-        // Buscar si el producto ya existe en el carrito
-        CarritoItem existingItem = items.stream()
+        // Verificar si ya existe para sumar cantidad
+        this.items.stream()
             .filter(i -> i.getProducto().getId().equals(item.getProducto().getId()))
             .findFirst()
-            .orElse(null);
-        
-        if (existingItem != null) {
-            existingItem.setCantidad(existingItem.getCantidad() + item.getCantidad());
-        } else {
-            items.add(item);
-        }
+            .ifPresentOrElse(
+                existente -> existente.setCantidad(existente.getCantidad() + item.getCantidad()),
+                () -> this.items.add(item)
+            );
     }
-
-    /**
-     * Elimina un item del carrito
-     */
-    public void eliminarItem(CarritoItem item) {
-        items.remove(item);
-        item.setCarrito(null);
-    }
-
-    /**
-     * Vacía el carrito eliminando todos los items
-     */
-    public void vaciar() {
-        items.clear();
-    }
-
-    /**
-     * Obtiene la cantidad total de items en el carrito
-     */
+    
     public int getCantidadTotal() {
-        return items.stream()
-            .mapToInt(CarritoItem::getCantidad)
-            .sum();
+        return items.stream().mapToInt(CarritoItem::getCantidad).sum();
     }
 }

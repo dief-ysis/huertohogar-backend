@@ -1,111 +1,73 @@
 package com.huertohogar.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * ENTIDAD TRANSACCION
- * 
- * Transacción de pago con Webpay Plus.
- * 
- * CUMPLE CON PREGUNTAS P102-138:
- * - Integración Webpay Plus
- * - Gestión de transacciones
- * - Estados de pago
- */
+/* Principio: Representa una transacción de pago, con estado y datos de autorización. */
+
 @Entity
 @Table(name = "transacciones")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class Transaccion {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String buyOrder;  // Orden de compra única
-
     @Column(unique = true)
-    private String token;  // Token de Webpay
-
-    @Column(nullable = false)
+    private String buyOrder;
+    
+    @Column(unique = true)
+    private String token; // Token Webpay
+    
     private String sessionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pedido_id")
+    @ToString.Exclude
     private Pedido pedido;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "usuario_id")
+    @ToString.Exclude
     private Usuario usuario;
 
-    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private EstadoTransaccion estado = EstadoTransaccion.INICIADA;
+    private EstadoTransaccion estado;
 
-    // DATOS DE RESPUESTA DE WEBPAY
+    // Datos retorno Webpay
     private String authorizationCode;
-    private String paymentTypeCode;
     private String responseCode;
+    private String paymentTypeCode;
     private Integer installmentsNumber;
 
-    @Column(length = 1000)
     private String mensajeError;
 
     @CreatedDate
-    @Column(nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;
-
     private LocalDateTime fechaAutorizacion;
 
-    // =========================================
-    // ENUM ESTADO TRANSACCIÓN
-    // =========================================
-
     public enum EstadoTransaccion {
-        INICIADA,           // Transacción creada, esperando pago
-        AUTORIZADA,         // Pago autorizado por Webpay
-        RECHAZADA,          // Pago rechazado
-        ANULADA,            // Transacción anulada
-        REVERSADA,          // Transacción reversada
-        EXPIRADA            // Token expirado
+        INICIADA, AUTORIZADA, RECHAZADA, ANULADA
     }
-
-    // =========================================
-    // MÉTODOS DE NEGOCIO
-    // =========================================
-
+    
     public boolean esExitosa() {
-        return estado == EstadoTransaccion.AUTORIZADA 
-            && "AUTHORIZED".equals(responseCode);
+        return estado == EstadoTransaccion.AUTORIZADA && "AUTHORIZED".equals(responseCode);
     }
 
-    public void marcarComoAutorizada(String authCode, String respCode) {
-        this.estado = EstadoTransaccion.AUTORIZADA;
-        this.authorizationCode = authCode;
-        this.responseCode = respCode;
-        this.fechaAutorizacion = LocalDateTime.now();
-    }
-
-    public void marcarComoRechazada(String respCode, String mensaje) {
+    public void marcarComoRechazada(String responseCode, String mensaje) {
         this.estado = EstadoTransaccion.RECHAZADA;
-        this.responseCode = respCode;
+        this.responseCode = responseCode;
         this.mensajeError = mensaje;
     }
 }

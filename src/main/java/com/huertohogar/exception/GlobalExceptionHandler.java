@@ -16,11 +16,17 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /*
+     * PRINCIPIO: Single Responsibility (SRP) en Errores
+     * Centralizamos la forma en que la API "falla". 
+     * Así el Frontend siempre recibe la misma estructura {status, message, timestamp}.
+     */
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
-                ex.getMessage(),
+                ex.getMessage(), // Mensaje amigable para el usuario
                 LocalDateTime.now()
         );
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
@@ -95,17 +101,21 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    /*
+     * Fallback para errores no controlados.
+     * Importante no filtrar stacktraces completos en producción por seguridad.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Error interno del servidor: " + ex.getMessage(),
+                "Ha ocurrido un error inesperado: " + ex.getMessage(),
                 LocalDateTime.now()
         );
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Clase ErrorResponse
+    // Record (Java 16+): Clase inmutable solo para datos. Ideal para respuestas DTO.
     public record ErrorResponse(
             int status,
             String message,

@@ -16,11 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * PRODUCTO CONTROLLER
- * 
- * Endpoints de gestión de productos
- */
 @RestController
 @RequestMapping("/v1/products")
 @RequiredArgsConstructor
@@ -29,11 +24,8 @@ public class ProductoController {
 
     private final ProductoService productoService;
 
-    /**
-     * Listar todos los productos con paginación
-     */
     @GetMapping
-    @Operation(summary = "Listar productos", description = "Obtener todos los productos activos con paginación")
+    @Operation(summary = "Listar productos")
     public ResponseEntity<Page<ProductoDTO>> getAllProductos(
             @PageableDefault(size = 12, sort = "id") Pageable pageable
     ) {
@@ -41,21 +33,17 @@ public class ProductoController {
         return ResponseEntity.ok(productos);
     }
 
-    /**
-     * Obtener producto por ID
-     */
-    @GetMapping("/{id}")
-    @Operation(summary = "Obtener producto", description = "Obtener detalles de un producto por ID")
+    // CORRECCIÓN CRÍTICA: Restringimos el ID para que solo acepte números.
+    // Esto evita que la palabra "categorias" o "search" se confunda con un ID.
+    @GetMapping("/{id:[0-9]+}")
+    @Operation(summary = "Obtener producto por ID")
     public ResponseEntity<ProductoDTO> getProductoById(@PathVariable Long id) {
         ProductoDTO producto = productoService.getProductoById(id);
         return ResponseEntity.ok(producto);
     }
 
-    /**
-     * Buscar productos por categoría
-     */
     @GetMapping("/category/{categoria}")
-    @Operation(summary = "Productos por categoría", description = "Filtrar productos por categoría")
+    @Operation(summary = "Productos por categoría")
     public ResponseEntity<Page<ProductoDTO>> getProductosByCategoria(
             @PathVariable String categoria,
             @PageableDefault(size = 12, sort = "id") Pageable pageable
@@ -64,11 +52,8 @@ public class ProductoController {
         return ResponseEntity.ok(productos);
     }
 
-    /**
-     * Buscar productos por texto
-     */
     @GetMapping("/search")
-    @Operation(summary = "Buscar productos", description = "Buscar productos por nombre o descripción")
+    @Operation(summary = "Buscar productos")
     public ResponseEntity<Page<ProductoDTO>> searchProductos(
             @RequestParam String q,
             @PageableDefault(size = 12, sort = "id") Pageable pageable
@@ -77,55 +62,42 @@ public class ProductoController {
         return ResponseEntity.ok(productos);
     }
 
-    /**
-     * Obtener productos destacados
-     */
     @GetMapping("/destacados")
-    @Operation(summary = "Productos destacados", description = "Obtener productos marcados como destacados")
+    @Operation(summary = "Productos destacados")
     public ResponseEntity<List<ProductoDTO>> getProductosDestacados() {
         List<ProductoDTO> productos = productoService.getProductosDestacados();
         return ResponseEntity.ok(productos);
     }
 
-    /**
-     * Obtener productos con descuento
-     */
     @GetMapping("/ofertas")
-    @Operation(summary = "Productos en oferta", description = "Obtener productos con descuento")
+    @Operation(summary = "Productos en oferta")
     public ResponseEntity<List<ProductoDTO>> getProductosConDescuento() {
         List<ProductoDTO> productos = productoService.getProductosConDescuento();
         return ResponseEntity.ok(productos);
     }
 
-    /**
-     * Obtener todas las categorías
-     */
     @GetMapping("/categorias")
-    @Operation(summary = "Listar categorías", description = "Obtener todas las categorías disponibles")
+    @Operation(summary = "Listar categorías")
     public ResponseEntity<List<String>> getCategorias() {
         List<String> categorias = productoService.getCategorias();
         return ResponseEntity.ok(categorias);
     }
 
-    /**
-     * Crear producto (ADMIN)
-     */
+    // --- Endpoints ADMIN ---
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Crear producto", description = "Crear un nuevo producto (solo ADMIN)")
+    @Operation(summary = "Crear producto")
     public ResponseEntity<ProductoDTO> createProducto(@Valid @RequestBody ProductoDTO productoDTO) {
         ProductoDTO nuevoProducto = productoService.createProducto(productoDTO);
         return ResponseEntity.ok(nuevoProducto);
     }
 
-    /**
-     * Actualizar producto (ADMIN)
-     */
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Actualizar producto", description = "Actualizar un producto existente (solo ADMIN)")
+    @Operation(summary = "Actualizar producto")
     public ResponseEntity<ProductoDTO> updateProducto(
             @PathVariable Long id,
             @Valid @RequestBody ProductoDTO productoDTO
@@ -134,13 +106,10 @@ public class ProductoController {
         return ResponseEntity.ok(productoActualizado);
     }
 
-    /**
-     * Eliminar producto (ADMIN) - soft delete
-     */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Eliminar producto", description = "Desactivar un producto (solo ADMIN)")
+    @Operation(summary = "Eliminar producto")
     public ResponseEntity<String> deleteProducto(@PathVariable Long id) {
         productoService.deleteProducto(id);
         return ResponseEntity.ok("Producto eliminado exitosamente");

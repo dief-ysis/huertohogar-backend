@@ -1,10 +1,7 @@
 package com.huertohogar.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -16,19 +13,13 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * ENTIDAD USUARIO
- * 
- * CUMPLE CON PREGUNTAS:
- * - P30-32: Implementación de roles (ROLE_USER, ROLE_ADMIN)
- * - P33-35: Gestión de estado autenticado
- * - P36-38: Gestión de tokens JWT
- * 
- * IMPLEMENTA UserDetails para integración con Spring Security
- */
+/* Principio: Interface Segregation. Implementamos UserDetails para que Spring Security entienda nuestra 
+entidad sin necesidad de adaptadores externos. */ 
+
 @Entity
 @Table(name = "usuarios")
-@Data
+@Getter
+@Setter // Usamos Setters explícitos, no @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -48,24 +39,12 @@ public class Usuario implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    @Column(length = 15)
+    // Datos de perfil
     private String telefono;
-
-    @Column(length = 255)
     private String direccion;
-
-    @Column(length = 100)
     private String comuna;
-
-    @Column(length = 100)
     private String region;
 
-    /**
-     * ROL DEL USUARIO
-     * 
-     * PREGUNTA P30-32: ¿Cómo implementaron roles?
-     * RESPUESTA: Enum con ROLE_USER y ROLE_ADMIN
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -75,6 +54,7 @@ public class Usuario implements UserDetails {
     @Builder.Default
     private Boolean activo = true;
 
+    // Auditoría
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;
@@ -82,14 +62,8 @@ public class Usuario implements UserDetails {
     @LastModifiedDate
     private LocalDateTime fechaActualizacion;
 
-    // =========================================
-    // USERDETAILS IMPLEMENTATION
-    // =========================================
+    // --- Implementación de UserDetails (Seguridad) ---
 
-    /**
-     * PREGUNTA P33: ¿Cómo saben si un usuario está autenticado?
-     * RESPUESTA: Spring Security valida el token JWT y carga este UserDetails
-     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(rol.name()));
@@ -97,42 +71,22 @@ public class Usuario implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return email; // Usamos email como identificador principal
     }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return activo;
-    }
+    public boolean isEnabled() { return activo; }
 
-    // =========================================
-    // ENUM ROL
-    // =========================================
-
-    /**
-     * PREGUNTA P30-32: ¿Cómo están definidos los roles?
-     * 
-     * RESPUESTA: Enum con dos roles:
-     * - ROLE_USER: Usuario normal
-     * - ROLE_ADMIN: Administrador con permisos completos
-     */
     public enum Rol {
-        ROLE_USER,
-        ROLE_ADMIN
+        ROLE_USER, ROLE_ADMIN
     }
 }

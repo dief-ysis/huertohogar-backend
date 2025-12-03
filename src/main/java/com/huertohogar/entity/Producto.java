@@ -1,25 +1,20 @@
 package com.huertohogar.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * ENTIDAD PRODUCTO
- * 
- * Productos orgánicos disponibles en la tienda.
- */
+/* Principio: Soft Delete (Borrado Lógico). Nunca borramos datos físicos (historial de ventas), 
+solo marcamos activo = false. */
+
 @Entity
 @Table(name = "productos")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -36,6 +31,7 @@ public class Producto {
     @Column(length = 1000)
     private String descripcion;
 
+    // BigDecimal es obligatorio para dinero para evitar errores de redondeo de float/double
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precio;
 
@@ -50,26 +46,19 @@ public class Producto {
     @Builder.Default
     private Integer stock = 0;
 
-    @Column(length = 100)
-    private String unidad;  // kg, unidad, bolsa, etc.
+    private String unidad; // kg, unidad, malla
+    private String imagen; // URL de la imagen
+    private String origen; 
 
-    @Column(length = 255)
-    private String imagen;
-
-    @Column(length = 100)
-    private String origen;  // País o región de origen
-
-    @Column(nullable = false)
     @Builder.Default
     private Boolean destacado = false;
 
     @Column(precision = 3, scale = 2)
     @Builder.Default
-    private BigDecimal rating = BigDecimal.ZERO;
+    private java.math.BigDecimal rating = java.math.BigDecimal.ZERO;
 
-    @Column(nullable = false)
     @Builder.Default
-    private Boolean activo = true;
+    private Boolean activo = true; // Para Soft Delete
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
@@ -78,9 +67,7 @@ public class Producto {
     @LastModifiedDate
     private LocalDateTime fechaActualizacion;
 
-    /**
-     * Calcula el precio con descuento aplicado
-     */
+    // Lógica de dominio: Calcular precio real
     public BigDecimal getPrecioConDescuento() {
         if (descuento == null || descuento.compareTo(BigDecimal.ZERO) == 0) {
             return precio;

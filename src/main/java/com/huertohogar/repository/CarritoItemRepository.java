@@ -8,19 +8,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/**
- * REPOSITORIO CARRITO ITEM
- */
 @Repository
 public interface CarritoItemRepository extends JpaRepository<CarritoItem, Long> {
-
-    /**
-     * Busca un item específico en el carrito
-     */
     Optional<CarritoItem> findByCarritoAndProducto(Carrito carrito, Producto producto);
-
-    /**
-     * Elimina todos los items de un carrito
-     */
     void deleteByCarrito(Carrito carrito);
 }

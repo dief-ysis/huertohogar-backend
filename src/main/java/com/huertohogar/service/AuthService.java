@@ -1,9 +1,6 @@
 package com.huertohogar.service;
 
-import com.huertohogar.dto.auth.AuthResponse;
-import com.huertohogar.dto.auth.LoginRequest;
-import com.huertohogar.dto.auth.RegisterRequest;
-import com.huertohogar.dto.auth.UserDTO;
+import com.huertohogar.dto.auth.*;
 import com.huertohogar.entity.Usuario;
 import com.huertohogar.exception.BadRequestException;
 import com.huertohogar.repository.UsuarioRepository;
@@ -15,15 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * AUTH SERVICE
- * 
- * CUMPLE CON PREGUNTAS:
- * - P33-35: Autenticación de usuarios
- * - P36-38: Generación y validación de JWT
- * 
- * Maneja login, registro y refresh token
- */
+/* Principio: Token Management. Genera access token (corto plazo) y refresh token (largo plazo). */
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -33,109 +23,55 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-    /**
-     * PREGUNTA P33-35: ¿Cómo autentican usuarios?
-     * RESPUESTA: Login con email/password, retorna JWT
-     */
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
-        // Autenticar con Spring Security
+        // 1. Validar credenciales con Spring Security
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
+            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        // Cargar usuario
+        // 2. Obtener usuario (si llegamos aquí, la password es correcta)
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("Usuario no encontrado"));
 
-        // Generar tokens
-        String token = jwtService.generateToken(usuario);
-        String refreshToken = jwtService.generateRefreshToken(usuario);
-
-        return AuthResponse.builder()
-                .token(token)
-                .refreshToken(refreshToken)
-                .user(convertToUserDTO(usuario))
-                .build();
+        // 3. Generar tokens
+        return construirAuthResponse(usuario);
     }
 
-    /**
-     * Registro de nuevo usuario
-     */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Validar que el email no exista
         if (usuarioRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("El email ya está registrado");
+            throw new BadRequestException("El email ya está en uso");
         }
 
-        // Crear usuario
         Usuario usuario = Usuario.builder()
                 .nombre(request.getNombre())
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .telefono(request.getTelefono())
-                .direccion(request.getDireccion())
-                .comuna(request.getComuna())
-                .region(request.getRegion())
+                .password(passwordEncoder.encode(request.getPassword())) // SIEMPRE encriptar
                 .rol(Usuario.Rol.ROLE_USER)
                 .activo(true)
                 .build();
 
         usuario = usuarioRepository.save(usuario);
-
-        // Generar tokens
+        return construirAuthResponse(usuario);
+    }
+    
+    private AuthResponse construirAuthResponse(Usuario usuario) {
         String token = jwtService.generateToken(usuario);
         String refreshToken = jwtService.generateRefreshToken(usuario);
+        
+        // Mapeo simple a DTO
+        UserDTO userDTO = UserDTO.builder()
+                .id(usuario.getId())
+                .nombre(usuario.getNombre())
+                .email(usuario.getEmail())
+                .rol(usuario.getRol().name())
+                .build();
 
         return AuthResponse.builder()
                 .token(token)
                 .refreshToken(refreshToken)
-                .user(convertToUserDTO(usuario))
-                .build();
-    }
-
-    /**
-     * PREGUNTA P38: ¿Qué hacen cuando un token expira?
-     * RESPUESTA: Refresh token permite renovar sin re-login
-     */
-    @Transactional(readOnly = true)
-    public AuthResponse refreshToken(String refreshToken) {
-        String userEmail = jwtService.extractUsername(refreshToken);
-        
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new BadRequestException("Usuario no encontrado"));
-
-        if (!jwtService.isTokenValid(refreshToken, usuario)) {
-            throw new BadRequestException("Refresh token inválido o expirado");
-        }
-
-        String newToken = jwtService.generateToken(usuario);
-        String newRefreshToken = jwtService.generateRefreshToken(usuario);
-
-        return AuthResponse.builder()
-                .token(newToken)
-                .refreshToken(newRefreshToken)
-                .user(convertToUserDTO(usuario))
-                .build();
-    }
-
-    /**
-     * Convierte Usuario entity a UserDTO
-     */
-    private UserDTO convertToUserDTO(Usuario usuario) {
-        return UserDTO.builder()
-                .id(usuario.getId())
-                .nombre(usuario.getNombre())
-                .email(usuario.getEmail())
-                .telefono(usuario.getTelefono())
-                .direccion(usuario.getDireccion())
-                .comuna(usuario.getComuna())
-                .region(usuario.getRegion())
-                .rol(usuario.getRol().name())
+                .user(userDTO)
                 .build();
     }
 }

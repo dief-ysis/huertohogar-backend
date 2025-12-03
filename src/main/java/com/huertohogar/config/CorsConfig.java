@@ -5,31 +5,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/* Principio: Seguridad en Navegador. Controla quién puede llamar a tu API. */
+
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
     @Value("${cors.allowed-origins}")
-    private String[] allowedOrigins;
-
-    @Value("${cors.allowed-methods}")
-    private String[] allowedMethods;
-
-    @Value("${cors.allowed-headers}")
-    private String allowedHeaders;
-
-    @Value("${cors.allow-credentials}")
-    private boolean allowCredentials;
-
-    @Value("${cors.max-age}")
-    private long maxAge;
+    private String[] allowedOrigins; // Definido en application.yml
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins(allowedOrigins)
-                .allowedMethods(allowedMethods)
-                .allowedHeaders(allowedHeaders.split(","))
-                .allowCredentials(allowCredentials)
-                .maxAge(maxAge);
+        registry.addMapping("/**") // Aplica a toda la API
+                .allowedOrigins(allowedOrigins) // Permitir localhost:3000
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true) // Permitir cookies/auth headers
+                .maxAge(3600);
     }
 }

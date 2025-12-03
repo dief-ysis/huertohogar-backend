@@ -1,62 +1,40 @@
 package com.huertohogar.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.math.BigDecimal;
 
-/**
- * ENTIDAD CARRITO ITEM
- * 
- * Item individual dentro del carrito de compras.
- */
+/* Principio: CarritoItem representa un ítem dentro del carrito, con cantidad y precio unitario. */
+
 @Entity
 @Table(name = "carrito_items")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CarritoItem {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "carrito_id", nullable = false)
+    @ToString.Exclude
     private Carrito carrito;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "producto_id", nullable = false)
     private Producto producto;
 
-    @Column(nullable = false)
     private Integer cantidad;
+    private BigDecimal precioUnitario; // Snapshot del precio al momento de agregar
 
-    /**
-     * Precio unitario en el momento de agregar al carrito
-     * (guardado para mantener histórico)
-     */
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal precioUnitario;
-
-    // =========================================
-    // MÉTODOS DE CÁLCULO
-    // =========================================
-
-    /**
-     * Calcula el subtotal del item (precio * cantidad)
-     */
     public BigDecimal getSubtotal() {
         return precioUnitario.multiply(BigDecimal.valueOf(cantidad));
     }
-
-    /**
-     * Actualiza el precio unitario desde el producto actual
-     */
+    
+    // Actualiza precio si el producto cambió (opcional, según regla de negocio)
     public void actualizarPrecio() {
         if (producto != null) {
             this.precioUnitario = producto.getPrecioConDescuento();
