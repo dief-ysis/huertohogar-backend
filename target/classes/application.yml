@@ -43,12 +43,14 @@ jwt:
   expiration: 86400000
   refresh-expiration: 604800000
 
-transbank:
-  webpay:
-    environment: TEST
-    commerce-code: 597055555532
-    api-key: 579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C
-    return-url: http://localhost:3000/payment-result
+# WEBPAY CONFIGURATION
+# Credenciales OFICIALES TEST de Transbank Webpay Plus
+# NO usar en PRODUCCIÓN sin actualizar a credenciales reales
+webpay:
+  commerce-code: "597055555532"
+  api-key: "579B532A3DEBA6A1D24F2F1D66A67F87"
+  environment: "TEST"
+  # NOTA: returnUrl se define en la request de iniciación, NO aquí
 
 cors:
   allowed-origins: "http://localhost:3000,http://localhost:5173"
