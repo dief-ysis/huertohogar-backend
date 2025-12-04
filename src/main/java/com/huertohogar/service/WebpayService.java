@@ -33,7 +33,6 @@ public class WebpayService {
     private final PedidoRepository pedidoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ProductoService productoService;
-    private final WebpayPlus.Transaction webpayTransaction;
 
     @Transactional
     public WebpayInitResponse iniciarTransaccion(String userEmail, WebpayInitRequest request) {
@@ -62,7 +61,9 @@ public class WebpayService {
             log.info("   - returnUrl: {}", request.getReturnUrl());
 
             // Usar la instancia inyectada (configurada correctamente)
-            WebpayPlusTransactionCreateResponse response = webpayTransaction.create(
+            // 1. Llamada al SDK de Transbank
+            WebpayPlus.Transaction transaction = new WebpayPlus.Transaction();
+            WebpayPlusTransactionCreateResponse response = transaction.create(
                     request.getBuyOrder(),
                     request.getSessionId(),
                     request.getAmount().doubleValue(),
@@ -78,6 +79,7 @@ public class WebpayService {
 
             log.info("✓ Token recibido: {}", response.getToken().substring(0, 10) + "...");
 
+            // 2. Guardar transacción en estado INICIADA
             Transaccion transaccion = Transaccion.builder()
                     .pedido(pedido)
                     .usuario(usuario)
@@ -90,16 +92,15 @@ public class WebpayService {
                     .build();
 
             transaccionRepository.save(transaccion);
-            log.info("✓ Transacción guardada en BD con ID: {}", transaccion.getId());
+            log.info("Transacción guardada en BD con token: {}", response.getToken());
 
-            WebpayInitResponse initResponse = new WebpayInitResponse();
-            initResponse.setToken(response.getToken());
-            initResponse.setUrl(response.getUrl());
-            return initResponse;
-
+            return WebpayInitResponse.builder()
+                    .token(response.getToken())
+                    .url(response.getUrl())
+                    .build();
         } catch (Exception e) {
-            log.error("❌ Error al iniciar transacción Webpay: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al iniciar transacción: " + e.getMessage(), e);
+            log.error("Error Webpay Init", e);
+            throw new RuntimeException("Error al iniciar transacción: " + e.getMessage());
         }
     }
 
@@ -144,7 +145,8 @@ public class WebpayService {
             log.info("📡 Llamando a WebpayPlus.Transaction.commit()...");
             
             // Usar la instancia inyectada (configurada correctamente)
-            WebpayPlusTransactionCommitResponse response = webpayTransaction.commit(token);
+            WebpayPlus.Transaction transaction = new WebpayPlus.Transaction();
+            WebpayPlusTransactionCommitResponse response = transaction.commit(token);
 
             log.info("✓ Respuesta recibida. Status: {}, ResponseCode: {}", response.getStatus(), response.getResponseCode());
 
@@ -166,29 +168,24 @@ public class WebpayService {
 
                 // Reducir stock después de pago confirmado
                 for (PedidoItem item : pedido.getItems()) {
-                    productoService.reducirStock(item.getProducto().getId(), item.getCantidad());
+                    try {
+                        productoService.reducirStock(item.getProducto().getId(), item.getCantidad());
+                    } catch (Exception e) {
+                        log.error("No se pudo vaciar el carrito tras pago exitoso", e);
+                    }
                 }
                 log.info("✓ Stock reducido para todos los items");
             } else {
                 log.warn("⚠ PAGO RECHAZADO - Status: {}, ResponseCode: {}", response.getStatus(), response.getResponseCode());
-                transaccion.marcarComoRechazada(String.valueOf(response.getResponseCode()), "Rechazado por Webpay");
-                transaccion.getPedido().setEstado(Pedido.EstadoPedido.RECHAZADO);
-                pedidoRepository.save(transaccion.getPedido());
+                transaccion.setEstado(Transaccion.EstadoTransaccion.RECHAZADA);
+                transaccion.setMensajeError("Rechazada: " + response.getStatus());
+                if (transaccion.getPedido() != null) {
+                    transaccion.getPedido().setEstado(Pedido.EstadoPedido.RECHAZADO);
+                }
             }
 
             transaccionRepository.save(transaccion);
-            
-            WebpayCommitResponse commitResponse = new WebpayCommitResponse();
-            commitResponse.setBuyOrder(response.getBuyOrder());
-            commitResponse.setSessionId(response.getSessionId());
-            commitResponse.setAmount(BigDecimal.valueOf(response.getAmount()));
-            commitResponse.setStatus(response.getStatus());
-            commitResponse.setAuthorizationCode(response.getAuthorizationCode());
-            commitResponse.setPaymentTypeCode(response.getPaymentTypeCode());
-            commitResponse.setResponseCode(String.valueOf(response.getResponseCode()));
-            commitResponse.setInstallmentsNumber((int) response.getInstallmentsNumber());
-            
-            return commitResponse;
+            return mapToCommitResponse(transaccion);
 
         } catch (Exception e) {
             log.error("❌ Error al confirmar transacción: {}", e.getMessage(), e);
@@ -205,10 +202,10 @@ public class WebpayService {
     }
 
     public void manejarTransaccionFallida(String token, String motivo) {
-        Transaccion transaccion = transaccionRepository.findByToken(token)
-                .orElseThrow(() -> new ResourceNotFoundException("Transacción no encontrada"));
-        transaccion.marcarComoRechazada("FAILED", motivo);
-        transaccionRepository.save(transaccion);
+        transaccionRepository.findByToken(token).ifPresent(t -> {
+            t.marcarComoRechazada("FAILED", motivo);
+            transaccionRepository.save(t);
+        });
     }
 
     public boolean esTransaccionExitosa(String token) {
@@ -224,5 +221,18 @@ public class WebpayService {
         Usuario usuario = usuarioRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
         return transaccionRepository.findByUsuarioIdOrderByFechaCreacionDesc(usuario.getId());
+    }
+
+    private WebpayCommitResponse mapToCommitResponse(Transaccion t) {
+        return WebpayCommitResponse.builder()
+                .buyOrder(t.getBuyOrder())
+                .sessionId(t.getSessionId())
+                .amount(t.getMonto())
+                .status(t.getEstado().name())
+                .authorizationCode(t.getAuthorizationCode())
+                .paymentTypeCode(t.getPaymentTypeCode())
+                .responseCode(t.getResponseCode())
+                .installmentsNumber(t.getInstallmentsNumber())
+                .build();
     }
 }

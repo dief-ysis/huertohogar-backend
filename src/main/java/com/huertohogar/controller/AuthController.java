@@ -2,6 +2,8 @@ package com.huertohogar.controller;
 
 import com.huertohogar.dto.auth.*;
 import com.huertohogar.service.AuthService;
+
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,5 +26,11 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Cerrar sesión")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.ok().build();
     }
 }

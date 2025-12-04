@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.huertohogar.dto.payment.WebpayCommitRequest;
 
 import java.util.HashMap;
 import java.util.List;
@@ -108,12 +109,20 @@ public class WebpayController {
      * Tu frontend captura ese token y llama INMEDIATAMENTE a este endpoint.
      */
     @PostMapping("/commit")
-    @Operation(summary = "Confirmar transacción")
+    @Operation(summary = "Confirmar transacción Webpay")
     public ResponseEntity<WebpayCommitResponse> confirmarTransaccion(
-            @RequestParam("token_ws") String token
+            @RequestBody WebpayCommitRequest request
     ) {
-        log.info("Confirmando transacción Webpay. Token: {}", token);
-        // Aquí es donde realmente se cobra el dinero y se descuenta el stock.
+        // Extraemos el token del objeto JSON
+        String token = request.getToken();
+        
+        log.info("Confirmando transacción Webpay. Token recibido: {}", token);
+        
+        // Validación básica
+        if (token == null || token.trim().isEmpty()) {
+             throw new IllegalArgumentException("El token es requerido dentro del cuerpo JSON");
+        }
+
         WebpayCommitResponse response = webpayService.confirmarTransaccion(token);
         return ResponseEntity.ok(response);
     }

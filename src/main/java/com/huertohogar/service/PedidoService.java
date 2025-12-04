@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,11 +31,6 @@ public class PedidoService {
     private final CarritoService carritoService;
     private final ProductoService productoService;
 
-    /*
-     * PRINCIPIO: Atomicidad (ACID)
-     * @Transactional asegura que todo sucede o nada sucede. 
-     * Si falla el guardado del pedido, no se vacía el carrito.
-     */
     @Transactional
     public PedidoDTO crearPedido(String userEmail, PedidoRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(userEmail)
@@ -48,71 +43,46 @@ public class PedidoService {
             throw new BadRequestException("El carrito está vacío");
         }
 
-        /*
-         * ADVERTENCIA DE DISEÑO (Race Condition):
-         * Aquí verificamos stock, pero NO lo descontamos hasta que se paga.
-         * Existe un riesgo de que dos usuarios compren la última unidad al mismo tiempo.
-         * Solución ideal: Reservar stock temporalmente o usar bloqueo pesimista en DB.
-         * Solución actual (MVP): Verificar de nuevo al momento del pago.
-         */
+        // Verificar stock
         for (CarritoItem item : carrito.getItems()) {
             if (!productoService.verificarStock(item.getProducto().getId(), item.getCantidad())) {
                 throw new BadRequestException("Stock insuficiente para: " + item.getProducto().getNombre());
             }
         }
 
-        Pedido pedido = Pedido.builder()
-                .numeroPedido(generarNumeroPedido())
-                .usuario(usuario)
-                .direccionEnvio(request.getDireccionEnvio())
-                .comunaEnvio(request.getComunaEnvio())
-                .regionEnvio(request.getRegionEnvio())
-                .notasEnvio(request.getNotasEnvio())
-                .costoEnvio(request.getCostoEnvio())
-                .descuentos(BigDecimal.ZERO)
-                .estado(Pedido.EstadoPedido.PENDIENTE)
-                .metodoPago(Pedido.MetodoPago.WEBPAY)
-                .build();
-
-        // Conversión de CarritoItem a PedidoItem
+        // 1. Crear Pedido Base
+        Pedido pedido = new Pedido();
+        pedido.setNumeroPedido("ORD-" + System.currentTimeMillis());
+        pedido.setUsuario(usuario);
+        pedido.setDireccionEnvio(request.getDireccionEnvio());
+        pedido.setComunaEnvio(request.getComunaEnvio());
+        pedido.setRegionEnvio(request.getRegionEnvio());
+        pedido.setNotasEnvio(request.getNotasEnvio());
+        pedido.setCostoEnvio(request.getCostoEnvio());
+        pedido.setDescuentos(BigDecimal.ZERO);
+        pedido.setEstado(Pedido.EstadoPedido.PENDIENTE);
+        pedido.setMetodoPago(Pedido.MetodoPago.WEBPAY);
+        pedido.setFechaCreacion(LocalDateTime.now());
+        
+        // 2. Convertir Items y Asociar
+        List<PedidoItem> pedidoItems = new ArrayList<>();
         for (CarritoItem carritoItem : carrito.getItems()) {
-            PedidoItem pedidoItem = PedidoItem.builder()
-                    .pedido(pedido) // Establecemos la relación bidireccional
-                    .producto(carritoItem.getProducto())
-                    .cantidad(carritoItem.getCantidad())
-                    .precioUnitario(carritoItem.getPrecioUnitario())
-                    .descuento(carritoItem.getProducto().getDescuento())
-                    .build();
-            
-            pedido.agregarItem(pedidoItem);
+            PedidoItem pi = new PedidoItem();
+            pi.setPedido(pedido);
+            pi.setProducto(carritoItem.getProducto());
+            pi.setCantidad(carritoItem.getCantidad());
+            pi.setPrecioUnitario(carritoItem.getPrecioUnitario());
+            pi.setDescuento(carritoItem.getProducto().getDescuento());
+            pedidoItems.add(pi);
         }
-
+        pedido.setItems(pedidoItems);
         pedido.calcularTotales();
+
+        // 3. Guardar Pedido
         pedido = pedidoRepository.save(pedido);
 
-        // Limpieza: Una vez convertido en pedido, el carrito ya no se necesita.
-        carritoService.vaciarCarrito(userEmail);
 
-        return convertToDTO(pedido);
-    }
-
-    /**
-     * Obtener pedido por ID
-     */
-    @Transactional(readOnly = true)
-    public PedidoDTO getPedidoById(Long id, String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
-
-        Pedido pedido = pedidoRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Pedido", "id", id));
-
-        // Verificar que el pedido pertenezca al usuario (o sea admin)
-        if (!pedido.getUsuario().getId().equals(usuario.getId()) && 
-            !usuario.getRol().equals(Usuario.Rol.ROLE_ADMIN)) {
-            throw new BadRequestException("No tienes permiso para ver este pedido");
-        }
-
+        // Convertir a DTO seguro (sin bucles)
         return convertToDTO(pedido);
     }
 
@@ -135,18 +105,20 @@ public class PedidoService {
         return convertToDTO(pedido);
     }
 
+    @Transactional(readOnly = true)
+    public PedidoDTO getPedidoById(Long id, String userEmail) {
+        Pedido p = pedidoRepository.findById(id).orElseThrow();
+        return convertToDTO(p);
+    }
+
     /**
      * Obtener pedidos del usuario
      */
     @Transactional(readOnly = true)
     public Page<PedidoDTO> getMisPedidos(String userEmail, Pageable pageable) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
-
-        return pedidoRepository.findByUsuarioOrderByFechaCreacionDesc(usuario, pageable)
-                .map(this::convertToDTO);
+        Usuario u = usuarioRepository.findByEmail(userEmail).orElseThrow();
+        return pedidoRepository.findByUsuarioOrderByFechaCreacionDesc(u, pageable).map(this::convertToDTO);
     }
-
     /**
      * Actualizar estado del pedido (ADMIN o después de pago)
      */
@@ -163,9 +135,9 @@ public class PedidoService {
             case PAGADO:
                 pedido.setFechaPago(ahora);
                 // Reducir stock al confirmar pago
-                for (PedidoItem item : pedido.getItems()) {
-                    productoService.reducirStock(item.getProducto().getId(), item.getCantidad());
-                }
+                pedido.getItems().forEach(item -> 
+                    productoService.reducirStock(item.getProducto().getId(), item.getCantidad())
+                );
                 break;
             case ENVIADO:
                 pedido.setFechaEnvio(ahora);
@@ -186,8 +158,7 @@ public class PedidoService {
      */
     @Transactional(readOnly = true)
     public Page<PedidoDTO> getAllPedidos(Pageable pageable) {
-        return pedidoRepository.findAll(pageable)
-                .map(this::convertToDTO);
+        return pedidoRepository.findAll(pageable).map(this::convertToDTO);
     }
 
     /**
@@ -196,17 +167,7 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public List<PedidoDTO> getPedidosByEstado(Pedido.EstadoPedido estado) {
         return pedidoRepository.findByEstadoOrderByFechaCreacionDesc(estado)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Generar número de pedido único
-     */
-    private String generarNumeroPedido() {
-        return "ORDER-" + System.currentTimeMillis() + "-" + 
-               UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                .stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     // Mapeo manual (patrón Mapper). Podrías usar MapStruct para automatizar esto.
@@ -231,15 +192,6 @@ public class PedidoService {
                 .descuentos(pedido.getDescuentos())
                 .total(pedido.getTotal())
                 .estado(pedido.getEstado().name())
-                .metodoPago(pedido.getMetodoPago().name())
-                .direccionEnvio(pedido.getDireccionEnvio())
-                .comunaEnvio(pedido.getComunaEnvio())
-                .regionEnvio(pedido.getRegionEnvio())
-                .notasEnvio(pedido.getNotasEnvio())
-                .fechaCreacion(pedido.getFechaCreacion())
-                .fechaPago(pedido.getFechaPago())
-                .fechaEnvio(pedido.getFechaEnvio())
-                .fechaEntrega(pedido.getFechaEntrega())
                 .build();
     }
 }

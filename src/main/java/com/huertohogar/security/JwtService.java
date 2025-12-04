@@ -14,8 +14,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-/* Nota: Utilidad pura para firmar y leer tokens. */
-
 @Service
 public class JwtService {
 
@@ -73,8 +71,8 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSignInKey())
+        return Jwts.parser() // .parser() a secas está deprecated, pero en 0.12 se usa parser() + verifyWith
+                .verifyWith(getSignInKey()) // Nueva sintaxis
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

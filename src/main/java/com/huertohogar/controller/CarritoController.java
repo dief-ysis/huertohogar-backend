@@ -7,11 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
-
-/* Principio: Context Awareness. Usamos Authentication para saber quién llama, 
-en lugar de pedir el ID del usuario por parámetro (lo cual sería inseguro). */
 
 @RestController
 @RequestMapping("/v1/cart")
@@ -22,7 +20,6 @@ public class CarritoController {
 
     @GetMapping
     public ResponseEntity<CarritoResponse> getCarrito(Authentication authentication) {
-        // Obtenemos el email del Token JWT automáticamente
         return ResponseEntity.ok(carritoService.getCarrito(authentication.getName()));
     }
 
@@ -34,15 +31,22 @@ public class CarritoController {
         return ResponseEntity.ok(carritoService.agregarItem(authentication.getName(), request));
     }
 
-    // Endpoint para sincronizar carrito local (si implementas esa lógica en React)
-    @PostMapping("/sync")
-    public ResponseEntity<CarritoResponse> sincronizarCarrito(
-            @RequestBody Map<String, List<AgregarItemRequest>> payload,
+    @PutMapping("/items/{itemId}")
+    public ResponseEntity<CarritoResponse> actualizarCantidad(
+            @PathVariable Long itemId,
+            @RequestBody Map<String, Integer> payload, // Recibimos { "quantity": 5 }
             Authentication authentication
     ) {
-        // El frontend envía { items: [...] }, extraemos la lista
-        List<AgregarItemRequest> items = payload.get("items");
-        return ResponseEntity.ok(carritoService.sincronizarCarrito(authentication.getName(), items));
+        Integer cantidad = payload.get("quantity");
+        return ResponseEntity.ok(carritoService.actualizarCantidad(authentication.getName(), itemId, cantidad));
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    public ResponseEntity<CarritoResponse> eliminarItem(
+            @PathVariable Long itemId, 
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(carritoService.eliminarItem(authentication.getName(), itemId));
     }
 
     @DeleteMapping
@@ -50,13 +54,13 @@ public class CarritoController {
         carritoService.vaciarCarrito(authentication.getName());
         return ResponseEntity.noContent().build();
     }
-    
-    // Faltaba este en el servicio anterior, asumo su existencia para REST completo
-    @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<CarritoResponse> eliminarItem(
-            @PathVariable Long itemId, 
+
+    @PostMapping("/sync")
+    public ResponseEntity<CarritoResponse> sincronizarCarrito(
+            @RequestBody Map<String, List<AgregarItemRequest>> payload,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(carritoService.eliminarItem(authentication.getName(), itemId));
+        List<AgregarItemRequest> items = payload.get("items");
+        return ResponseEntity.ok(carritoService.sincronizarCarrito(authentication.getName(), items));
     }
 }

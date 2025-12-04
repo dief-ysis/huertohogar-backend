@@ -13,8 +13,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-/* Principio: Dependency Injection. Configuración de Beans globales. */
-
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
@@ -23,8 +21,6 @@ public class ApplicationConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        // Lambda que busca el usuario por email.
-        // Como Usuario implementa UserDetails, esto funciona directo.
         return username -> usuarioRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
@@ -44,6 +40,6 @@ public class ApplicationConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Algoritmo estándar de la industria
+        return new BCryptPasswordEncoder();
     }
 }
