@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.Map;
 
 /* Principio: Context Awareness. Usamos Authentication para saber quién llama, 
 en lugar de pedir el ID del usuario por parámetro (lo cual sería inseguro). */
@@ -33,6 +35,16 @@ public class CarritoController {
     }
 
     // Endpoint para sincronizar carrito local (si implementas esa lógica en React)
+    @PostMapping("/sync")
+    public ResponseEntity<CarritoResponse> sincronizarCarrito(
+            @RequestBody Map<String, List<AgregarItemRequest>> payload,
+            Authentication authentication
+    ) {
+        // El frontend envía { items: [...] }, extraemos la lista
+        List<AgregarItemRequest> items = payload.get("items");
+        return ResponseEntity.ok(carritoService.sincronizarCarrito(authentication.getName(), items));
+    }
+
     @DeleteMapping
     public ResponseEntity<Void> vaciarCarrito(Authentication authentication) {
         carritoService.vaciarCarrito(authentication.getName());

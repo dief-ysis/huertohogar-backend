@@ -55,26 +55,34 @@ public class DataInitializer {
 
             // 3. Crear Productos si está vacío
             if (productoRepository.count() == 0) {
-                crearProducto("Papas Orgánicas", "Papas frescas del sur", 1500, "Verduras", 100, "kg", "https://i.imgur.com/u7y7y7.jpg");
-                crearProducto("Tomates Limachinos", "Tomates jugosos y rojos", 2200, "Verduras", 50, "kg", "https://i.imgur.com/x8x8x8.jpg");
-                crearProducto("Miel de Ulmo", "Miel 100% natural", 8990, "Despensa", 20, "frasco", "https://i.imgur.com/z9z9z9.jpg");
-                crearProducto("Lechuga Costina", "Hidropónica fresca", 1200, "Verduras", 30, "un", "https://i.imgur.com/a1a1a1.jpg");
+                // PRODUCTOS NORMALES (Descuento 0, Destacado false)
+                crearProducto("Papas Orgánicas", "Papas frescas del sur", 1500, 0, "VERDURAS", 100, "kg", "https://ecomercioagrario.com/wp-content/uploads/2015/08/peru-duplica-produccion-papa-organica-gracias-semilla-certificada-ecomercioagrario.jpg", false);
+                crearProducto("Lechuga Costina", "Hidropónica fresca", 1200, 0, "VERDURAS", 30, "un", "https://chilehuerta.cl/wp-content/uploads/2022/03/Lechuga-Costina.jpg", false);
+                crearProducto("Miel de Ulmo", "Miel 100% natural", 8990, 0, "ORGANICOS", 20, "frasco", "https://adagio.cl/cdn/shop/files/miel-organica-ulmo.jpg?v=1701198006&width=1280", true);
+
+                // OFERTAS (Con descuento, Destacado true)
+                crearProducto("Pack Frutas Estación", "Mix de manzanas, peras y naranjas", 5000, 20, "FRUTAS", 50, "malla", "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=500&q=60", true);
+                crearProducto("Tomates Limachinos", "Tomates jugosos y rojos", 2200, 15, "VERDURAS", 50, "kg", "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=500&q=60", true);
+                crearProducto("Aceite de Oliva", "Prensado en frío 1L", 12990, 30, "ORGANICOS", 15, "botella", "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=500&q=60", true);
+                
                 System.out.println(">> PRODUCTOS INICIALES CREADOS");
             }
         };
     }
 
-    private void crearProducto(String nombre, String desc, double precio, String cat, int stock, String unidad, String img) {
+    private void crearProducto(String nombre, String desc, double precio, double descuento, String cat, int stock, String unidad, String img, boolean destacado) {
         Producto p = Producto.builder()
                 .nombre(nombre)
                 .descripcion(desc)
                 .precio(BigDecimal.valueOf(precio))
+                .descuento(BigDecimal.valueOf(descuento))
                 .categoria(cat)
                 .stock(stock)
                 .unidad(unidad)
                 .imagen(img)
                 .activo(true)
-                .destacado(true)
+                .destacado(destacado)
+                .rating(BigDecimal.valueOf(4.5)) // Valor por defecto
                 .build();
         productoRepository.save(p);
     }

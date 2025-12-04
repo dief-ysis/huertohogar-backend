@@ -11,4 +11,6 @@ public class CarritoResponse {
     private List<CarritoItemDTO> items;
     private BigDecimal subtotal;
     private BigDecimal total;
+    private BigDecimal descuentos;
+    private Integer cantidadTotal;
 }
