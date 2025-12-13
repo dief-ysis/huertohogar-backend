@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -55,18 +54,20 @@ public class WebpayService {
         validarParametrosWebpay(request);
 
         try {
+            // IMPORTANTE: Webpay no acepta decimales para CLP, redondear a entero
+            long amountAsLong = request.getAmount().setScale(0, java.math.RoundingMode.HALF_UP).longValue();
+
             log.info("📡 Llamando a WebpayPlus.Transaction.create()...");
             log.info("   - buyOrder: {}", request.getBuyOrder());
-            log.info("   - amount: {}", request.getAmount());
+            log.info("   - amount original: {}", request.getAmount());
+            log.info("   - amount redondeado (CLP no acepta decimales): {}", amountAsLong);
             log.info("   - returnUrl: {}", request.getReturnUrl());
 
-            // Usar la instancia inyectada (configurada correctamente)
-            // 1. Llamada al SDK de Transbank
             WebpayPlus.Transaction transaction = new WebpayPlus.Transaction();
             WebpayPlusTransactionCreateResponse response = transaction.create(
                     request.getBuyOrder(),
                     request.getSessionId(),
-                    request.getAmount().doubleValue(),
+                    amountAsLong,
                     request.getReturnUrl()
             );
 

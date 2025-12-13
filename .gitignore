@@ -76,6 +76,7 @@ secrets/
 *.key
 *.pem
 *.p12
+*.ppk
 
 # ============= TEMP FILES =============
 *.tmp

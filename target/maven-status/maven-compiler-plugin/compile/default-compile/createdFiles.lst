@@ -1,7 +1,9 @@
 com\huertohogar\config\ApplicationConfig.class
 com\huertohogar\entity\Transaccion$EstadoTransaccion.class
 com\huertohogar\service\CarritoService.class
+com\huertohogar\dto\payment\WebpayCommitRequest.class
 com\huertohogar\dto\payment\WebpayCommitResponse.class
+com\huertohogar\dto\payment\WebpayCommitResponse$WebpayCommitResponseBuilder.class
 com\huertohogar\exception\GlobalExceptionHandler.class
 com\huertohogar\repository\UsuarioRepository.class
 com\huertohogar\dto\cart\CarritoItemDTO$CarritoItemDTOBuilder.class
@@ -28,6 +30,7 @@ com\huertohogar\exception\GlobalExceptionHandler$ErrorResponse.class
 com\huertohogar\config\WebpayConfig.class
 com\huertohogar\repository\TransaccionRepository.class
 com\huertohogar\controller\PedidoController.class
+com\huertohogar\dto\payment\WebpayInitResponse$WebpayInitResponseBuilder.class
 com\huertohogar\entity\Pedido$MetodoPago.class
 com\huertohogar\service\WebpayService.class
 com\huertohogar\dto\product\ProductoDTO$ProductoDTOBuilder.class
@@ -36,6 +39,7 @@ com\huertohogar\dto\auth\AuthResponse.class
 com\huertohogar\repository\CarritoRepository.class
 com\huertohogar\service\CustomUserDetailsService.class
 com\huertohogar\repository\ProductoRepository.class
+com\huertohogar\dto\payment\WebpayCommitRequest$WebpayCommitRequestBuilder.class
 com\huertohogar\security\JwtAuthenticationFilter.class
 com\huertohogar\controller\ProductoController.class
 com\huertohogar\service\ProductoService.class
@@ -56,6 +60,7 @@ com\huertohogar\dto\order\PedidoRequest.class
 com\huertohogar\entity\Carrito$CarritoBuilder.class
 com\huertohogar\service\UsuarioService.class
 com\huertohogar\dto\order\PedidoDTO$PedidoDTOBuilder.class
+com\huertohogar\dto\payment\WebpayInitRequest$WebpayInitRequestBuilder.class
 com\huertohogar\exception\UnauthorizedException.class
 com\huertohogar\dto\auth\AuthResponse$AuthResponseBuilder.class
 com\huertohogar\exception\WebpayException.class

@@ -94,7 +94,7 @@ public class CarritoService {
     public void vaciarCarrito(String userEmail) {
         Usuario usuario = usuarioRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
         carritoRepository.findByUsuario(usuario).ifPresent(carrito -> {
-            carrito.getItems().clear(); // OrphanRemoval se encarga de borrar de BD
+            carritoItemRepository.deleteByCarritoId(carrito.getId());
             carritoRepository.save(carrito);
         });
     }

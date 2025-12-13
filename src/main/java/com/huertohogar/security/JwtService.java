@@ -71,8 +71,8 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser() // .parser() a secas está deprecated, pero en 0.12 se usa parser() + verifyWith
-                .verifyWith(getSignInKey()) // Nueva sintaxis
+        return Jwts.parser() 
+                .verifyWith(getSignInKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
